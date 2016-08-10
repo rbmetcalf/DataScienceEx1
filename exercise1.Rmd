@@ -1,0 +1,100 @@
+---
+title: "Data Wrangling Exersize 1"
+author: "r.b.metcalf"
+date: "9 Aug 2016"
+output: html_document
+---
+
+```{r,echo=FALSE,message=FALSE}
+library("tidyr")
+library("dplyr")
+```
+
+
+
+## Data Wrangling Exercise 1
+
+The data file was converted into csv format with OpenOffice.
+
+Now we load it into R and take a look at the structure.
+```{r}
+table <- tbl_df(read.csv("refine_original.csv"))
+glimpse(table)
+```
+
+Find the unique company names and clean them up.
+
+```{r}
+table %>% distinct(company)
+
+table$company <- tolower(table$company)
+table$company <- gsub("0","o",table$company)
+table$company <- gsub("phillips","philips",table$company)
+table$company <- gsub("phllips","philips",table$company)
+table$company <- gsub("phillps","philips",table$company)
+table$company <- gsub("fillips","philips",table$company)
+table$company <- gsub("phlips","philips",table$company)
+table$company <- gsub("ak zo","akzo",table$company)
+table$company <- gsub("unilver","unilever",table$company)
+
+table %>% distinct(company)
+```
+
+Now separate product code and number into different columns.
+```{r}
+table <- table %>% mutate(Product.code = Product.code...number) %>% mutate(Product.numbers = Product.code...number)
+
+table$Product.code <- gsub("\\-.*","",table$Product.code)
+table$Product.numbers <- as.numeric(gsub(".*\\-","",table$Product.numbers))
+```
+
+*Now convert the product codes to real names.*
+
+Define a function that converts codes to names.
+```{r}
+product_name <- function(x){
+  if(x == "p") return("Smartphone")
+  if(x == "v") return("TV")
+  if(x == "x") return("Laptop")
+  if(x == "q") return("Tablet")
+  return("NA")  
+}
+```
+Now make new column with names Product.name
+```{r}
+table$Product.name <- sapply(table$Product.code,product_name)
+glimpse(table)
+```
+Concatenate address parts
+```{r}
+table$full_address <- paste(table$city,",",table$address,",",table$country)
+table$full_address <- gsub(" ,",",",table$full_address)
+```
+Add columns for binary company classification
+```{r}
+table$company_philips <- table$company == "philips"
+table$company_akzo <- table$company == "akzo"
+table$company_van_houten <- table$company == "van houten"
+table$company_unilever <- table$company == "unilever"
+
+## check to see that all of them have a classification
+table %>% select(company_philips:company_unilever) %>% rowSums()
+
+```
+
+Add columns for binary product classification
+```{r}
+table$product_smartphone <- table$Product.name == "Smartphone"
+table$product_tv <- table$Product.name == "TV"
+table$product_laptop <- table$Product.name == "Laptop"
+table$product_tablet <- table$Product.name == "Tablet"
+
+## check to see that all of them have a classification
+
+table %>% select(product_smartphone:product_tablet) %>% rowSums()
+```
+
+```{r}
+table %>% write.table("refine_clean.csv")
+```
+
